@@ -223,8 +223,8 @@ plugins:
     type: fast_forward
     args:
       upstream:
-        - addr: "223.5.5.5"
-        - addr: "tls://120.53.53.53:853"
+        - addr: "https://dns.alidns.com/dns-query"
+        - addr: "tls://dns.alidns.com"
           enable_pipeline: true
 
   # 转发至远程服务器的插件
@@ -232,10 +232,10 @@ plugins:
     type: fast_forward
     args:
       upstream:
-        - addr: "tcp://208.67.220.220:5353"
+        - addr: "tls://dns.google"
           enable_pipeline: true
           #socks5: "127.0.0.1:1080"
-        - addr: "tls://8.8.4.4"
+        - addr: "https://dns.google/dns-query"
           enable_pipeline: true
           #socks5: "127.0.0.1:1080"
 
@@ -297,11 +297,11 @@ plugins:
             - _prefer_ipv4
             - ecs_global
             - primary:
-                # 默认用分流服务器
-                - forward_easymosdns
-              secondary:
-                # 超时用远程服务器
+                # 默认用远程服务器
                 - forward_remote
+              secondary:
+                # 超时用分流服务器
+                - forward_easymosdns
               fast_fallback: 2500
               always_standby: false
             - ttl_5m
@@ -339,11 +339,11 @@ plugins:
             - _prefer_ipv4
             - ecs_global
             - primary:
-                # 默认用分流服务器
-                - forward_easymosdns
-              secondary:
-                # 超时用远程服务器
+                # 默认用远程服务器
                 - forward_remote
+              secondary:
+                # 超时用分流服务器
+                - forward_easymosdns
               fast_fallback: 2500
               always_standby: false
             - ttl_5m
@@ -353,8 +353,8 @@ plugins:
         # 优先返回ipv4结果
         - _prefer_ipv4
         - primary:
-            # 默认用分流服务器
-            - forward_easymosdns
+            # 默认用远程服务器
+            - forward_remote
             - if: response_server_failed
               exec:
                 - forward_local
@@ -362,18 +362,14 @@ plugins:
             - ecs_global
             - if: "(! ecs_is_cn) && (! response_has_local_ip) && [_response_valid_answer]"
               exec:
-                - forward_easymosdns
+                - forward_remote
           secondary:
             # 超时用本地分流器
-            - forward_remote
-            - if: response_has_local_ip
+            - forward_local
+            - if: "(! response_has_local_ip) && [_response_valid_answer]"
               exec:
-                - forward_local
-                - _return
-            - ecs_global
-            - if: "(! ecs_is_cn) && [_response_valid_answer]"
-              exec:
-                - forward_remote
+                - ecs_global
+                - forward_easymosdns
           fast_fallback: 2500
           always_standby: false
         - ttl_5m
@@ -383,9 +379,9 @@ servers:
     timeout: 6
     listeners:
       - protocol: udp
-        addr: "0.0.0.0:53"
+        addr: "0.0.0.0:8053"
       - protocol: tcp
-        addr: "0.0.0.0:53"
+        addr: "0.0.0.0:8053"
       #- protocol: http
       #  addr: "127.0.0.1:9053"
       #  url_path: "/dns-query"
